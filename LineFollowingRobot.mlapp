@@ -1,0 +1,86 @@
+
+classdef LineFollowingRobot < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure             matlab.ui.Figure
+        UIAxes               matlab.ui.control.UIAxes
+        StartButton          matlab.ui.control.Button
+        ResetButton          matlab.ui.control.Button
+    end
+
+    properties (Access = private)
+        robotPos = [10, 50];    
+        robotAngle = 0;         
+        pathX                  
+        pathY                  
+        robotPlot              
+        timerObj               
+    end
+
+    methods (Access = private)
+
+        function startupFcn(app)
+            t = linspace(0, 10, 300);
+            app.pathX = 10 * t;
+            app.pathY = 50 + 30 * sin(t);
+
+            plot(app.UIAxes, app.pathX, app.pathY, 'k--', 'LineWidth', 2);
+            hold(app.UIAxes, 'on');
+            axis(app.UIAxes, [0 120 0 100]);
+            title(app.UIAxes, 'Line Following Robot');
+            xlabel(app.UIAxes, 'X');
+            ylabel(app.UIAxes, 'Y');
+
+            app.robotPlot = plot(app.UIAxes, app.robotPos(1), app.robotPos(2), ...
+                'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
+        end
+
+        function moveRobot(app)
+            distances = sqrt((app.pathX - app.robotPos(1)).^2 + ...
+                             (app.pathY - app.robotPos(2)).^2);
+            [~, idx] = min(distances);
+
+            if idx < length(app.pathX)
+                target = [app.pathX(idx+1), app.pathY(idx+1)];
+            else
+                stop(app.timerObj);
+                return;
+            end
+
+            direction = target - app.robotPos;
+            direction = direction / norm(direction);
+            speed = 1;
+            app.robotPos = app.robotPos + speed * direction;
+
+            app.robotPlot.XData = app.robotPos(1);
+            app.robotPlot.YData = app.robotPos(2);
+        end
+
+    end
+
+    methods (Access = public)
+
+        function StartButtonPushed(app, event)
+            app.timerObj = timer( ...
+                'ExecutionMode', 'fixedRate', ...
+                'Period', 0.05, ...
+                'TimerFcn', @(~,~) app.moveRobot());
+
+            start(app.timerObj);
+        end
+
+        function ResetButtonPushed(app, event)
+            if ~isempty(app.timerObj) && isvalid(app.timerObj)
+                stop(app.timerObj);
+                delete(app.timerObj);
+            end
+
+            app.robotPos = [10, 50];
+            app.robotAngle = 0;
+            app.robotPlot.XData = app.robotPos(1);
+            app.robotPlot.YData = app.robotPos(2);
+        end
+
+    end
+end
